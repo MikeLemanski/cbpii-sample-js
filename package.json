@@ -1,0 +1,22 @@
+{
+  "name": "cbpii-sample",
+  "version": "1.0.1",
+  "description": "Illustrates use of token.io's bindAccessButton API",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tokenio/pfm-sample-js.git"
+  },
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@token-io/tpp": "^1.0.19",
+    "body-parser": "^1.18.3",
+    "cookie-session": "^1.3.3",
+    "express": "^4.15.4"
+  }
+}

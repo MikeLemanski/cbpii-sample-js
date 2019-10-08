@@ -1,0 +1,6 @@
+node_modules
+keys
+.idea
+
+# OSX files
+.DS_Store
