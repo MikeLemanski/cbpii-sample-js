@@ -157,7 +157,7 @@ async function initServer(member, alias) {
         var token = await member.getToken(result.tokenId);
         var accountId = token.payload.access.resources[0].fundsConfirmation.accountId;
 
-        var output = rep.confirmFunds(accountId, amount, currency);
+        var output = await rep.confirmFunds(accountId, amount, currency);
 
         res.send(`Funds sufficient to cover a charge of ${amount} ${currency}: <b>${JSON.stringify(output)}</b>`); // respond to script.js with balances
     });
