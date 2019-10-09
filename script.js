@@ -28,7 +28,7 @@ function createRedirectButton() {
 
     // create the button
     button = token.createTokenButton(element, {
-        label: 'Token Access',
+        label: 'Token CAF',
     });
 
     // create TokenController to handle messages
@@ -60,7 +60,7 @@ function createPopupButton() {
 
     // create the button
     button = token.createTokenButton(element, {
-        label: 'Token Access',
+        label: 'Token CAF',
     });
 
     // create TokenController to handle messages
@@ -68,7 +68,7 @@ function createPopupButton() {
         onSuccess: function(data) { // Success Callback
             // ideally you should POST 'data' to your endpoint, but for simplicity's sake
             // we are simply putting it in the URL
-            var successURL = "/fetch-balances-popup"
+            var successURL = "/confirm-funds-popup"
                 + "?data=" + window.encodeURIComponent(JSON.stringify(data));
             // navigate to success URL
             window.location.assign(successURL);
@@ -95,12 +95,12 @@ function createPopupButton() {
 
 function redirectTokenRequest() {
     // go to request balances
-    document.location.assign("/request-balances");
+    document.location.assign("/request-funds-confirmation");
 }
 
 // set up a function to fetch the Token Request Function
 function getTokenRequestUrl(done) {
-    fetch('/request-balances-popup', {
+    fetch('/request-funds-confirmation-popup', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json; charset=utf-8',

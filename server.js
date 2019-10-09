@@ -13,9 +13,19 @@ var {TokenClient} = require('@token-io/tpp'); // main Token SDK entry object
 // '4qY7...': Developer key
 var Token = new TokenClient({env: 'dev', developerKey: '4qY7lqQw8NOl9gng0ZHgT4xdiDqxqoGVutuZwrUYQsI', keyDir: './keys'});
 
+var bankAccount = {
+    domestic: {
+        accountNumber: '12345678',
+        bankCode: '123456',
+        country: 'US',
+    }
+};
+var amount = 10.0;
+var currency = 'USD';
+
 async function init() {
-    var alias; // aisp alias
-    var member; // aisp member
+    var alias; // cbpii alias
+    var member; // cbpii member
     // If we know of a previously-created aisp member, load it; else create a new one.
 
     // Token SDK stores member keys in files in ./keys.
@@ -34,7 +44,7 @@ async function init() {
 
     // If member is defined, that means we found keys and loaded them.
     if (member) {
-        // We're using an existing aisp member. Fetch its alias (email address)
+        // We're using an existing cbpii member. Fetch its alias (email address)
         try {
             alias = await member.firstAlias();
         } catch (e) {
@@ -58,7 +68,7 @@ async function init() {
         await member.setProfile({
             // A member's profile has a display name and picture.
             // The Token UI shows this (and the alias) to the user when requesting access.
-            displayNameFirst: 'Demo Data Aggregator',
+            displayNameFirst: 'CBPII Demo',
         });
 
         await member.setProfilePicture('image/png', fs.readFileSync('finvertex.png'))
@@ -84,18 +94,17 @@ async function initServer(member, alias) {
         })
     });
 
-    app.get('/request-balances', async function (req, res) {
-        var resources = ['ACCOUNTS', 'BALANCES'];
+    app.get('/request-funds-confirmation', async function (req, res) {
         var nonce = Token.Util.generateNonce();
         req.session.nonce = nonce;
-        var redirectUrl = req.protocol + '://' + req.get('host') + '/account-balance';
-        // set up the AccessTokenRequest
-        var tokenRequest = Token.createAccessTokenRequest(resources)
+        var redirectUrl = req.protocol + '://' + req.get('host') + '/confirm-funds';
+        // set up the TokenRequest
+        var tokenRequest = Token.createFundsConfirmationRequest('iron', bankAccount)
             .setToAlias(alias)
             .setToMemberId(member.memberId())
             .setRedirectUrl(redirectUrl)
             .setCSRFToken(nonce);
-        console.log(tokenRequest);
+
         // store the token request
         var request = await member.storeTokenRequest(tokenRequest);
         var requestId = request.id;
@@ -103,18 +112,18 @@ async function initServer(member, alias) {
         res.redirect(302, tokenRequestUrl);
     });
 
-    app.post('/request-balances-popup', urlencodedParser, async function (req, res) {
-        var resources = ['ACCOUNTS', 'BALANCES'];
+    app.post('/request-funds-confirmation-popup', urlencodedParser, async function (req, res) {
         var nonce = Token.Util.generateNonce();
         req.session.nonce = nonce;
-        var redirectUrl = req.protocol + '://' + req.get('host') + '/fetch-balances-popup';
+        var redirectUrl = req.protocol + '://' + req.get('host') + '/confirm-funds-popup';
 
-        // set up the AccessTokenRequest
-        var tokenRequest = Token.createAccessTokenRequest(resources)
+        // set up the TokenRequest
+        var tokenRequest = Token.createFundsConfirmationRequest('iron', bankAccount)
             .setToAlias(alias)
             .setToMemberId(member.memberId())
             .setRedirectUrl(redirectUrl)
             .setCSRFToken(nonce);
+
         // store the token request
         var request = await member.storeTokenRequest(tokenRequest);
         var requestId = request.id;
@@ -123,36 +132,34 @@ async function initServer(member, alias) {
     });
 
     // for redirect flow, use Token.parseTokenRequestCallbackUrl()
-    app.get('/fetch-balances', async function (req, res) {
+    app.get('/confirm-funds', async function (req, res) {
         var callbackUrl = req.protocol + '://' + req.get('host') + req.originalUrl;
         // verifies signature and CSRF token
         var result = await Token.parseTokenRequestCallbackUrl(callbackUrl, req.session.nonce);
         // "log in" as service member.
         // get a Representable member object to use the access token
         var rep = member.forAccessToken(result.tokenId);
+        var token = await member.getToken(result.tokenId);
         var accountId = token.payload.access.resources[0].fundsConfirmation.accountId;
 
-        var output = rep.confirmFunds(accountId, cafAmount, result.currency)
+        var output = await rep.confirmFunds(accountId, amount, currency);
 
-        res.send(JSON.stringify(output)); // respond to script.js with balances
+        res.send(`Funds sufficient to cover a charge of ${amount} ${currency}: <b>${JSON.stringify(output)}</b>`); // respond to script.js with balances
     });
 
     // for popup flow, use Token.parseTokenRequestCallbackParams()
-    app.get('/fetch-balances-popup', async function (req, res) {
+    app.get('/confirm-funds-popup', async function (req, res) {
         // verifies signature and CSRF token
         var result = await Token.parseTokenRequestCallbackParams(JSON.parse(req.query.data), req.session.nonce);
         // "log in" as service member.
         // get a Representable member object to use the access token
         var rep = member.forAccessToken(result.tokenId);
-        var accounts = await rep.getAccounts();
+        var token = await member.getToken(result.tokenId);
+        var accountId = token.payload.access.resources[0].fundsConfirmation.accountId;
 
-        var output = {balances: []};
-        for (var i = 0; i < accounts.length; i++) { // for each account...
-            var balance = (await rep.getBalance(accounts[i].id(), Token.KeyLevel.LOW)); // ...get its balance
-            output.balances.push(balance.available);
-        }
+        var output = rep.confirmFunds(accountId, amount, currency)
 
-        res.send(JSON.stringify(output)); // respond to script.js with balances
+        res.send(`Funds sufficient to cover a charge of ${amount} ${currency}: <b>${JSON.stringify(output)}</b>`); // respond to script.js with balances
     });
 
     app.use(express.static(__dirname));
